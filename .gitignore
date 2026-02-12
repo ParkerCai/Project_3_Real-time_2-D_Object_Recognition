@@ -1,0 +1,25 @@
+# Build outputs
+bin/
+build/
+release/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+*.vcxproj*
+*.sln
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# ImGui settings
+imgui.ini
+
+# Temporary files
+*.tmp
+*.log
