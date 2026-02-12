@@ -7,15 +7,6 @@
 - GitHub: Parker Cai - [@parkercai (https://github.com/ParkerCai)]
 - GitHub: Jenny Nguyen - [@jennyncodes (https://github.com/jennyncodes)]
 
-# Project 3: Real-time 2-D Object Recognition
-
-**CS5330 Pattern Recognition & Computer Vision**
-
-## Team
-
-- GitHub: Parker Cai - [@parkercai (https://github.com/ParkerCai)]
-- GitHub: Jenny Nguyen - [@jennyncodes (https://github.com/jennyncodes)]
-
 ## Overview
 
 Build a real-time 2-D object recognition system that identifies objects on a uniform surface in a translation, scale, and rotation invariant manner.
