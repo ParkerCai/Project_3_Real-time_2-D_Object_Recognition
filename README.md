@@ -71,13 +71,34 @@ cmake -Wno-dev -G "Visual Studio 17 2022" -A x64 -DOpenCV_DIR="C:\opencv_build\b
 cmake --build . --config Release
 ```
 
-## Usage
 
 <!-- How to run the program -->
+## Running
+```bash
+# default camera
+.\bin\or2d.exe
+
+# or specify camera number
+.\bin\or2d.exe 1
+```
+
+### Controls
+
+- `q` - quit
+- `s` - save images (for report)
+- `a` - toggle auto/manual threshold
+- `+`/`-` - adjust threshold
+- `h` - help
 
 ## Tasks
 
 ### Task 1: Thresholding
+- **Status**: Complete (written from scratch)
+- **Implementation**: ISODATA algorithm (k-means with k=2) for authomatic threshold calculation
+- **Method**: Sample 1/16 of pixels, run k-means to find object and background clusters, use midpoint as threshold
+- **From Scratch**: Manual pixel-by-pixel thresholding loop (NOT using cv::threshold())
+- **Testing**: .\bin\or2d.exe
+
 
 ### Task 2: Morphological Filtering (Clean Up)
 
