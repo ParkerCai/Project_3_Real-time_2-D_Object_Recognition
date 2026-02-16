@@ -45,7 +45,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_SOURCE_DIR}/../bin)
 
 # --- Core source files ---
 set(SOURCES
-
+    threshold.cpp
 )
 
 # --- ImGui source files (using OpenGL2 backend - simpler, no loader needed) ---
@@ -65,6 +65,6 @@ add_executable(or2d or2d.cpp ${SOURCES})
 target_link_libraries(or2d ${OpenCV_LIBS})
 
 # OR2D GUI program (WIN32 hides console window)
-add_executable(or2d_gui WIN32 gui/or2d_gui.cpp gui/app_icon.rc ${SOURCES} ${IMGUI_SOURCES})
-target_link_libraries(or2d_gui ${OpenCV_LIBS} glfw OpenGL::GL dwmapi)
-set_target_properties(or2d_gui PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
+# add_executable(or2d_gui WIN32 gui/or2d_gui.cpp gui/app_icon.rc ${SOURCES} ${IMGUI_SOURCES})
+# target_link_libraries(or2d_gui ${OpenCV_LIBS} glfw OpenGL::GL dwmapi)
+# set_target_properties(or2d_gui PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
