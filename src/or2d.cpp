@@ -21,6 +21,9 @@ void showHelp() {
     cout << "  + - increase threshold" << endl;
     cout << "  - - decrease threshold" << endl;
     cout << "  h - help" << endl;
+    cout << "  1 - show original" << endl;
+    cout << "  2 - show threshold" << endl;
+    cout << "  3 - show cleaned" << endl;
     cout << "========================\n" << endl;
 }
 
@@ -46,11 +49,12 @@ int main(int argc, char** argv) {
     
     // create windows
     namedWindow("Original");
-    namedWindow("Threshold");
+    namedWindow("Result");
     
     // variables for the program
     bool auto_mode = true;
     int manual_thresh = 120; 
+    int display_mode = 3; // 1=original, 2=threshold, 3=cleaned
     int saveNum = 0;
     Mat frame;
     
@@ -59,38 +63,41 @@ int main(int argc, char** argv) {
         // grab frame from camera
         cap >> frame;
         if(frame.empty()) {
-            // cout << "empty frame" << endl;
             break;
         }
         
         // display the original frame
-        Mat display;
-        frame.copyTo(display);
-        string mode_text;
-        if(auto_mode) {
-            mode_text = "Auto";
-        } else {
-            mode_text = "Manual=" + to_string(manual_thresh);
-        }
-        putText(display, mode_text, Point(10, 30), 
-                FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0,255,0), 2);
+        Mat display = frame.clone();
+        string text = auto_mode ? "Auto" : "Manual=" + to_string(manual_thresh);
+        putText(display, text, Point(10,30), FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0,255,0), 2);
         imshow("Original", display);
         
-        // thresholding
-        Mat thresh;
+        // do the processing
+        Mat thresh, cleaned;
         if(auto_mode) {
             thresh = thresholdImage(frame);
         } else {
             // manual threshold mode
             thresh = thresholdImage(frame, manual_thresh);
         }
+        cleaned = cleanupBinary(thresh);
         
-        // show the thresholded image
-        Mat thresh_display;
-        cvtColor(thresh, thresh_display, COLOR_GRAY2BGR);
-        putText(thresh_display, "Binary", Point(10, 30),
-                FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0,255,0), 2);
-        imshow("Threshold", thresh_display);
+       // show result based on mode
+        Mat show;
+        string label;
+        if(display_mode == 1) {
+            cvtColor(frame, show, COLOR_BGR2GRAY);
+            cvtColor(show, show, COLOR_GRAY2BGR);
+            label = "Original";
+        } else if(display_mode == 2) {
+            cvtColor(thresh, show, COLOR_GRAY2BGR);
+            label = "Threshold";
+        } else {
+            cvtColor(cleaned, show, COLOR_GRAY2BGR);
+            label = "Cleaned";
+        }
+        putText(show, label, Point(10,30), FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0,255,0), 2);
+        imshow("Result", show);
         
         // check for key presses
         int key = waitKey(30);
@@ -101,6 +108,18 @@ int main(int argc, char** argv) {
         }
         else if(key == 'h') {
             showHelp();
+        }
+        else if(key == '1') {
+            display_mode = 1;
+            cout << "Showing original" << endl;
+        }
+        else if(key == '2') {
+            display_mode = 2;
+            cout << "Showing threshold" << endl;
+        }
+        else if(key == '3') {
+            display_mode = 3;
+            cout << "Showing cleaned" << endl;
         }
         else if(key == 'a') {
             auto_mode = !auto_mode;
@@ -127,11 +146,10 @@ int main(int argc, char** argv) {
         else if(key == 's') {
             // save both images
             saveNum++;
-            string filename1 = "orig_" + to_string(saveNum) + ".jpg";
-            string filename2 = "thresh_" + to_string(saveNum) + ".jpg";
-            imwrite(filename1, frame);
-            imwrite(filename2, thresh);
-            cout << "Saved images: " << filename1 << " and " << filename2 << endl;
+            imwrite("orig_" + to_string(saveNum) + ".jpg", frame);
+            imwrite("thresh_" + to_string(saveNum) + ".jpg", thresh);
+            imwrite("clean_" + to_string(saveNum) + ".jpg", cleaned);
+            cout << "Saved set " << saveNum << endl;
         }
     }
     
