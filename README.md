@@ -88,6 +88,9 @@ cmake --build . --config Release
 - `s` - save images (for report)
 - `a` - toggle auto/manual threshold
 - `+`/`-` - adjust threshold
+- `1` - Show original 
+- `2` - Show threshold only 
+- `3` - Show cleaned (morphology) 
 - `h` - help
 
 ## Tasks
@@ -101,6 +104,14 @@ cmake --build . --config Release
 
 
 ### Task 2: Morphological Filtering (Clean Up)
+- **Status**: Complete (written from scratch)
+- **Implementation**: Erosion and dilation operations built from scratch
+- **Strategy**: 
+  - Opening (erode → dilate) to remove noise
+  - Closing (dilate → erode) to fill holes
+- **From Scratch**: Manual neighbor-checking loops for erosion and dilation (NOT using cv::erode() or cv::dilate())
+- **File**: `src/morphology.cpp`
+- **Testing**: Run program and press `3` to view cleaned output
 
 ### Task 3: Connected Components (Segmentation)
 
