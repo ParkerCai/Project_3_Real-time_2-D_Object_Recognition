@@ -1,8 +1,9 @@
 /*
   Jenny Nguyen
+  Parker Cai
   February 16, 2026
   CS5330 - Project 3: Real-time 2-D Object Recognition
-  
+
   Header file with function declarations
 */
 

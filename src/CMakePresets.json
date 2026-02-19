@@ -5,7 +5,7 @@
             "name": "windows-release",
             "generator": "Visual Studio 17 2022",
             "architecture": "x64",
-            "binaryDir": "${sourceDir}/build",
+            "binaryDir": "${sourceDir}/../build",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "OpenCV_DIR": "C:/opencv_build/build/install"

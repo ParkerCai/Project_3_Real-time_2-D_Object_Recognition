@@ -1,161 +1,187 @@
 /*
   Jenny Nguyen
+  Parker Cai
   February 16, 2026
   CS5330 - Project 3: Real-time 2-D Object Recognition
-  
-  Main program for object recognition
+
+  Main program for object recognition.
+  Captures video from webcam and applies thresholding/cleanup for 2D object recognition.
 */
 
 #include <opencv2/opencv.hpp>
 #include <iostream>
+#include <print>
+#include <chrono>
 #include "or2d.h"
 
-using namespace cv;
-using namespace std;
 
-void showHelp() {
-    cout << "Controls:" << endl;
-    cout << "  q - quit" << endl;
-    cout << "  s - save image" << endl;
-    cout << "  a - toggle auto/manual" << endl; 
-    cout << "  + - increase threshold" << endl;
-    cout << "  - - decrease threshold" << endl;
-    cout << "  h - help" << endl;
-    cout << "  1 - show original" << endl;
-    cout << "  2 - show threshold" << endl;
-    cout << "  3 - show cleaned" << endl;
-    cout << "========================\n" << endl;
+/*
+  Use the chrono time library to get the current time
+  returns the current time in seconds as a double
+*/
+double getTime() {
+  using namespace std::chrono;
+  auto now = high_resolution_clock::now();
+  auto now_in_seconds = duration_cast<duration<double>>(now.time_since_epoch()).count();
+  return now_in_seconds;
 }
 
+
+/*
+  Helper function to show the cli controls menu of the program.
+*/
+void showHelp() {
+  std::println("Controls:");
+  std::println("  q - quit");
+  std::println("  s - save image");
+  std::println("  a - toggle auto/manual");
+  std::println("  + - increase threshold");
+  std::println("  - - decrease threshold");
+  std::println("  h - help");
+  std::println("  1 - show original");
+  std::println("  2 - show threshold");
+  std::println("  3 - show cleaned");
+  std::println("========================");
+  std::println("");
+}
+
+
+/*
+  Main function: capture video from webcam and perform object recognition.
+*/
 int main(int argc, char** argv) {
-    // get camera number
-    int camNum = 0;
-    if(argc>1){
-        camNum=atoi(argv[1]);
+  // get camera number
+  int camNum = 0;
+  if (argc > 1) {
+    camNum = atoi(argv[1]);
+  }
+
+  // open the camera
+  cv::VideoCapture cap(camNum);
+  if (!cap.isOpened()) {
+    std::println("Can't open camera");
+    return -1;
+  }
+
+  cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
+  cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
+
+  // get some properties of the image
+  cv::Size refS((int)cap.get(cv::CAP_PROP_FRAME_WIDTH),
+    (int)cap.get(cv::CAP_PROP_FRAME_HEIGHT));
+  std::println("Expected size: {} {}", refS.width, refS.height);
+
+  std::println("Camera opened successfully");
+  showHelp();
+
+  // create windows
+  cv::namedWindow("Original", cv::WINDOW_NORMAL);
+  cv::namedWindow("Result", cv::WINDOW_NORMAL);
+  cv::resizeWindow("Original", refS.width, refS.height);
+  cv::resizeWindow("Result", refS.width, refS.height);
+
+  // variables for the program
+  bool auto_mode = true;
+  int manual_thresh = 120;
+  int display_mode = 3; // 1=original, 2=threshold, 3=cleaned
+  cv::Mat frame;
+
+  // main loop
+  while (true) {
+    // grab frame from camera, treat as a stream
+    cap >> frame;
+    if (frame.empty()) {
+      std::println("frame is empty");
+      break;
     }
-    
-    // open the camera
-    VideoCapture cap(camNum);
-    if(!cap.isOpened()) {
-        cout << "Can't open camera" << endl;
-        return -1;
+
+    // display the original frame with mode texts toverlay
+    cv::Mat display = frame.clone();
+    std::string text = auto_mode ? "Auto" : "Manual=" + std::to_string(manual_thresh);
+    cv::putText(display, text, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
+    cv::imshow("Original", display);
+
+    // do the processing
+    cv::Mat thresh, cleaned;
+    if (auto_mode) {
+      thresh = thresholdImage(frame);
     }
-    
-    cap.set(CAP_PROP_FRAME_WIDTH, 640);
-    cap.set(CAP_PROP_FRAME_HEIGHT, 480);
-    
-    cout << "Camera opened successfully" << endl;
-    showHelp();
-    
-    // create windows
-    namedWindow("Original");
-    namedWindow("Result");
-    
-    // variables for the program
-    bool auto_mode = true;
-    int manual_thresh = 120; 
-    int display_mode = 3; // 1=original, 2=threshold, 3=cleaned
-    int saveNum = 0;
-    Mat frame;
-    
-    // main loop
-    while(true) {
-        // grab frame from camera
-        cap >> frame;
-        if(frame.empty()) {
-            break;
-        }
-        
-        // display the original frame
-        Mat display = frame.clone();
-        string text = auto_mode ? "Auto" : "Manual=" + to_string(manual_thresh);
-        putText(display, text, Point(10,30), FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0,255,0), 2);
-        imshow("Original", display);
-        
-        // do the processing
-        Mat thresh, cleaned;
-        if(auto_mode) {
-            thresh = thresholdImage(frame);
-        } else {
-            // manual threshold mode
-            thresh = thresholdImage(frame, manual_thresh);
-        }
-        cleaned = cleanupBinary(thresh);
-        
-       // show result based on mode
-        Mat show;
-        string label;
-        if(display_mode == 1) {
-            cvtColor(frame, show, COLOR_BGR2GRAY);
-            cvtColor(show, show, COLOR_GRAY2BGR);
-            label = "Original";
-        } else if(display_mode == 2) {
-            cvtColor(thresh, show, COLOR_GRAY2BGR);
-            label = "Threshold";
-        } else {
-            cvtColor(cleaned, show, COLOR_GRAY2BGR);
-            label = "Cleaned";
-        }
-        putText(show, label, Point(10,30), FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0,255,0), 2);
-        imshow("Result", show);
-        
-        // check for key presses
-        int key = waitKey(30);
-        
-        if(key == 'q') {
-            cout << "Quitting..." << endl;
-            break;
-        }
-        else if(key == 'h') {
-            showHelp();
-        }
-        else if(key == '1') {
-            display_mode = 1;
-            cout << "Showing original" << endl;
-        }
-        else if(key == '2') {
-            display_mode = 2;
-            cout << "Showing threshold" << endl;
-        }
-        else if(key == '3') {
-            display_mode = 3;
-            cout << "Showing cleaned" << endl;
-        }
-        else if(key == 'a') {
-            auto_mode = !auto_mode;
-            if(auto_mode) {
-                cout << "Mode: Auto" << endl;
-            } else {
-                cout << "Mode: Manual" << endl;
-            }
-        }
-        else if(key == '+') {
-            manual_thresh = manual_thresh + 5;
-            if(manual_thresh > 255) {
-                manual_thresh = 255;
-            }
-            cout << "Threshold: " << manual_thresh << endl;
-        }
-        else if(key == '-') {
-            manual_thresh = manual_thresh - 5;
-            if(manual_thresh < 0) {
-                manual_thresh = 0;
-            }
-            cout << "Threshold: " << manual_thresh << endl;
-        }
-        else if(key == 's') {
-            // save both images
-            saveNum++;
-            imwrite("orig_" + to_string(saveNum) + ".jpg", frame);
-            imwrite("thresh_" + to_string(saveNum) + ".jpg", thresh);
-            imwrite("clean_" + to_string(saveNum) + ".jpg", cleaned);
-            cout << "Saved set " << saveNum << endl;
-        }
+    else { // manual threshold mode
+      thresh = thresholdImage(frame, manual_thresh);
     }
-    
-    // cleanup
-    cap.release();
-    destroyAllWindows();
-    
-    return 0;
+    cleaned = cleanupBinary(thresh);
+
+    // show result based on display mode
+    cv::Mat show;
+    std::string label;
+    switch (display_mode) {
+      case 1:
+        cv::cvtColor(frame, show, cv::COLOR_BGR2GRAY);
+        cv::cvtColor(show, show, cv::COLOR_GRAY2BGR);
+        label = "Original";
+        break;
+      case 2:
+        cv::cvtColor(thresh, show, cv::COLOR_GRAY2BGR);
+        label = "Threshold";
+        break;
+      default:
+        cv::cvtColor(cleaned, show, cv::COLOR_GRAY2BGR);
+        label = "Cleaned";
+        break;
+    }
+    // overlay label text on the result
+    cv::putText(show, label, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
+    cv::imshow("Result", show);
+
+    // handle keypresses cases
+    char key = cv::waitKey(30);
+    switch (key) {
+      case 'q':
+        std::println("Quitting...");
+        break;
+      case 'h':
+        showHelp();
+        break;
+      case '1':
+        display_mode = 1;
+        std::println("Showing original");
+        break;
+      case '2':
+        display_mode = 2;
+        std::println("Showing threshold");
+        break;
+      case '3':
+        display_mode = 3;
+        std::println("Showing cleaned");
+        break;
+      case 'a':
+        auto_mode = !auto_mode;
+        std::println("Mode: {}", auto_mode ? "Auto" : "Manual");
+        break;
+      case '+':
+        manual_thresh = std::min(manual_thresh + 5, 255);
+        std::println("Threshold: {}", manual_thresh);
+        break;
+      case '-':
+        manual_thresh = std::max(manual_thresh - 5, 0);
+        std::println("Threshold: {}", manual_thresh);
+        break;
+      case 's': {
+        // save the original, threshold, and cleaned images with timestamped filenames
+        std::string timestamp = std::to_string(getTime());
+        cv::imwrite(timestamp + "_original" + ".jpg", frame);
+        cv::imwrite(timestamp + "_threshold" + ".jpg", thresh);
+        cv::imwrite(timestamp + "_cleaned" + ".jpg", cleaned);
+        std::println("Saved frame_{}", timestamp);
+        break;
+      }
+    }
+
+    if (key == 'q') break;
+  }
+
+  // cleanup and exit
+  cap.release();
+  cv::destroyAllWindows();
+  return 0;
 }
