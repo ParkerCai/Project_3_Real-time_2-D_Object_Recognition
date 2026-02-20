@@ -11,6 +11,7 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <unordered_map>
 
 
 // Simple hard-coded pastel color palette for region visualization (BGR format)
@@ -104,12 +105,45 @@ cv::Mat segmentRegions(const cv::Mat& binary,
     candidates.resize(maxRegions);
   }
 
-  // Assign colors based on connected-component label
-  // TODO: fix color stability issue (color flickering across frames)
+  // Assign colors with centroid matching against previous frame regions
+  // use static variables to persist between calls
+  static std::vector<RegionInfo> prevRegions;
+  static int nextColorIdx = 0;
+  // max allowed centroid match distance squared: dx^2 + dy^2 < 50^2 pixels
+  float maxMatchDist = 50.0f;
+  std::vector<uchar> prevUsed(prevRegions.size(), 0); // to track which previous regions have been matched
+
   for (RegionInfo& candidate : candidates) {
-    candidate.color = colorForLabel(candidate.label);
+    int bestIdx = -1;
+    float bestDistSq = maxMatchDist * maxMatchDist;
+
+    for (int i = 0; i < static_cast<int>(prevRegions.size()); i++) {
+      // Skip already matched previous regions
+      if (prevUsed[i]) {
+        continue;
+      }
+      // Compute squared distance between centroids
+      const float dx = candidate.centroid.x - prevRegions[i].centroid.x;
+      const float dy = candidate.centroid.y - prevRegions[i].centroid.y;
+      const float distSq = dx * dx + dy * dy;
+      // Check if this previous region is a better match
+      if (distSq < bestDistSq) {
+        bestDistSq = distSq;
+        bestIdx = i;
+      }
+    }
+    // Assign color 
+    if (bestIdx != -1) { // found a match, reuse color
+      candidate.color = prevRegions[bestIdx].color;
+      prevUsed[bestIdx] = 1; // mark this previous region as matched
+    }
+    else { // no match, assign new color based on label
+      candidate.color = colorForLabel(nextColorIdx++);
+    }
+
     regions.push_back(candidate);
   }
+  prevRegions = regions;
 
 
   // Assign color to the region pixels (single pass)
