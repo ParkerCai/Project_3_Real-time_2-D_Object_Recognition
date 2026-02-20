@@ -47,6 +47,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_SOURCE_DIR}/../bin)
 set(SOURCES
     threshold.cpp
     morphology.cpp
+    segmentation.cpp
 )
 
 # --- ImGui source files (using OpenGL2 backend - simpler, no loader needed) ---

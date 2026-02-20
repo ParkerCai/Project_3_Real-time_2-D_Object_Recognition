@@ -41,6 +41,7 @@ void showHelp() {
   std::println("  1 - show original");
   std::println("  2 - show threshold");
   std::println("  3 - show cleaned");
+  std::println("  4 - show segmented regions");
   std::println("========================");
   std::println("");
 }
@@ -83,8 +84,10 @@ int main(int argc, char** argv) {
   // variables for the program
   bool auto_mode = true;
   int manual_thresh = 120;
-  int display_mode = 3; // 1=original, 2=threshold, 3=cleaned
+  int display_mode = 3; // 1=original, 2=threshold, 3=cleaned, 4=segmented
   cv::Mat frame;
+  std::vector<RegionInfo> regions;
+  cv::Mat segmented;
 
   // main loop
   while (true) {
@@ -95,7 +98,7 @@ int main(int argc, char** argv) {
       break;
     }
 
-    // display the original frame with mode texts toverlay
+    // display the original frame with mode text overlay
     cv::Mat display = frame.clone();
     std::string text = auto_mode ? "Auto" : "Manual=" + std::to_string(manual_thresh);
     cv::putText(display, text, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
@@ -111,6 +114,9 @@ int main(int argc, char** argv) {
     }
     cleaned = cleanupBinary(thresh);
 
+    // Segment regions for multi-object recognition
+    segmented = segmentRegions(cleaned, regions);
+
     // show result based on display mode
     cv::Mat show;
     std::string label;
@@ -123,6 +129,14 @@ int main(int argc, char** argv) {
       case 2:
         cv::cvtColor(thresh, show, cv::COLOR_GRAY2BGR);
         label = "Threshold";
+        break;
+      case 3:
+        cv::cvtColor(cleaned, show, cv::COLOR_GRAY2BGR);
+        label = "Cleaned";
+        break;
+      case 4:
+        show = segmented.clone();
+        label = "Segmented";
         break;
       default:
         cv::cvtColor(cleaned, show, cv::COLOR_GRAY2BGR);
@@ -154,6 +168,10 @@ int main(int argc, char** argv) {
         display_mode = 3;
         std::println("Showing cleaned");
         break;
+      case '4':
+        display_mode = 4;
+        std::println("Showing segmented regions");
+        break;
       case 'a':
         auto_mode = !auto_mode;
         std::println("Mode: {}", auto_mode ? "Auto" : "Manual");
@@ -167,11 +185,12 @@ int main(int argc, char** argv) {
         std::println("Threshold: {}", manual_thresh);
         break;
       case 's': {
-        // save the original, threshold, and cleaned images with timestamped filenames
+        // save the original, threshold, cleaned, and segmented images with timestamped filenames
         std::string timestamp = std::to_string(getTime());
         cv::imwrite(timestamp + "_original" + ".jpg", frame);
         cv::imwrite(timestamp + "_threshold" + ".jpg", thresh);
         cv::imwrite(timestamp + "_cleaned" + ".jpg", cleaned);
+        cv::imwrite(timestamp + "_segmented" + ".jpg", segmented);
         std::println("Saved frame_{}", timestamp);
         break;
       }
