@@ -41,16 +41,18 @@ static cv::Vec3b colorForLabel(int label) {
     4. Assign colors based on label and create a color-coded result image
     5. Draw bounding boxes and centroids on the result image
 */
-cv::Mat segmentRegions(const cv::Mat& binary,
+cv::Mat segmentRegions(
+  const cv::Mat& binary,
   std::vector<RegionInfo>& regions,
+  cv::Mat& labelMap,
   int minSize,
   int maxRegions) {
   // Clear output regions vector
   regions.clear();
 
   // Run OpenCV's connected components with stats
-  cv::Mat labels, stats, centroids;
-  int numLabels = cv::connectedComponentsWithStats(binary, labels, stats, centroids, 4, CV_32S, cv::CCL_DEFAULT);
+  cv::Mat stats, centroids;
+  int numLabels = cv::connectedComponentsWithStats(binary, labelMap, stats, centroids, 4, CV_32S, cv::CCL_DEFAULT);
   // CCL_DEFAULT (Spaghetti4C) — Bolelli et al. 2021. Two-pass union-find for merging labels + DAG-based decision trees 
   // CCL_WU (SAUF) — Wu et al. 2009. Classic two-pass with array-based union-find. 
 
@@ -154,9 +156,9 @@ cv::Mat segmentRegions(const cv::Mat& binary,
   }
   cv::Mat result = cv::Mat::zeros(binary.size(), CV_8UC3); // Color-coded display image
   // Iterate through the label image and assign colors
-  for (int r = 0; r < labels.rows; r++) {
-    for (int c = 0; c < labels.cols; c++) {
-      int label = labels.at<int>(r, c);
+  for (int r = 0; r < labelMap.rows; r++) {
+    for (int c = 0; c < labelMap.cols; c++) {
+      int label = labelMap.at<int>(r, c);
       auto it = labelColor.find(label);
       if (it != labelColor.end()) {
         result.at<cv::Vec3b>(r, c) = it->second; // assign color based on label color map

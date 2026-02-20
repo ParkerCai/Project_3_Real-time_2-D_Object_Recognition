@@ -38,10 +38,10 @@ void showHelp() {
   std::println("  + - increase threshold");
   std::println("  - - decrease threshold");
   std::println("  h - help");
-  std::println("  1 - show original");
-  std::println("  2 - show threshold");
-  std::println("  3 - show cleaned");
-  std::println("  4 - show segmented regions");
+  std::println("  0 - show original");
+  std::println("  1 - show threshold");
+  std::println("  2 - show cleaned");
+  std::println("  3 - show segmented regions");
   std::println("========================");
   std::println("");
 }
@@ -84,10 +84,10 @@ int main(int argc, char** argv) {
   // variables for the program
   bool auto_mode = true;
   int manual_thresh = 120;
-  int display_mode = 3; // 1=original, 2=threshold, 3=cleaned, 4=segmented
+  int display_mode = 2; // 0=original, 1=threshold, 2=cleaned, 3=segmented
   cv::Mat frame;
   std::vector<RegionInfo> regions;
-  cv::Mat segmented;
+  cv::Mat segmented, labelMap;
 
   // main loop
   while (true) {
@@ -115,26 +115,26 @@ int main(int argc, char** argv) {
     cleaned = cleanupBinary(thresh);
 
     // Segment regions for multi-object recognition
-    segmented = segmentRegions(cleaned, regions);
+    segmented = segmentRegions(cleaned, regions, labelMap);
 
     // show result based on display mode
     cv::Mat show;
     std::string label;
     switch (display_mode) {
-      case 1:
+      case 0:
         cv::cvtColor(frame, show, cv::COLOR_BGR2GRAY);
         cv::cvtColor(show, show, cv::COLOR_GRAY2BGR);
         label = "Original";
         break;
-      case 2:
+      case 1:
         cv::cvtColor(thresh, show, cv::COLOR_GRAY2BGR);
         label = "Threshold";
         break;
-      case 3:
+      case 2:
         cv::cvtColor(cleaned, show, cv::COLOR_GRAY2BGR);
         label = "Cleaned";
         break;
-      case 4:
+      case 3:
         show = segmented.clone();
         label = "Segmented";
         break;
@@ -156,20 +156,20 @@ int main(int argc, char** argv) {
       case 'h':
         showHelp();
         break;
+      case '0':
+        display_mode = 0;
+        std::println("Showing original");
+        break;
       case '1':
         display_mode = 1;
-        std::println("Showing original");
+        std::println("Showing threshold");
         break;
       case '2':
         display_mode = 2;
-        std::println("Showing threshold");
+        std::println("Showing cleaned");
         break;
       case '3':
         display_mode = 3;
-        std::println("Showing cleaned");
-        break;
-      case '4':
-        display_mode = 4;
         std::println("Showing segmented regions");
         break;
       case 'a':
