@@ -49,6 +49,7 @@ set(SOURCES
     morphology.cpp
     segmentation.cpp
     features.cpp
+    training.cpp
 )
 
 # --- ImGui source files (using OpenGL2 backend - simpler, no loader needed) ---
@@ -60,6 +61,8 @@ set(IMGUI_SOURCES
     ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl2.cpp
 )
+
+
 
 # --- Executables ---
 

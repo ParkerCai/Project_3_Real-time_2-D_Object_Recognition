@@ -73,4 +73,16 @@ void computeRegionFeatures(const cv::Mat& labelMap, RegionInfo& region);
 */
 void drawFeatures(cv::Mat& image, const std::vector<RegionInfo>& regions);
 
+// Training
+void saveTrainingExample(const std::string& filename, 
+                        const std::string& label,
+                        const std::vector<double>& features);
+
+int loadTrainingData(const std::string& filename,
+                     std::vector<std::string>& labels,
+                     std::vector<std::vector<double>>& features);
+
+void initializeDatabase(const std::string& filename);
+
+
 #endif // OR2D_H
