@@ -42,6 +42,7 @@ void showHelp() {
   std::println("  1 - show threshold");
   std::println("  2 - show cleaned");
   std::println("  3 - show segmented regions");
+  std::println("  4 - show features (OBB + axis)");
   std::println("========================");
   std::println("");
 }
@@ -117,6 +118,11 @@ int main(int argc, char** argv) {
     // Segment regions for multi-object recognition
     segmented = segmentRegions(cleaned, regions, labelMap);
 
+    // Compute features for each region
+    for (auto& region : regions) {
+      computeRegionFeatures(labelMap, region);
+    }
+
     // show result based on display mode
     cv::Mat show;
     std::string label;
@@ -137,6 +143,11 @@ int main(int argc, char** argv) {
       case 3:
         show = segmented.clone();
         label = "Segmented";
+        break;
+      case 4:
+        show = colorizeRegions(labelMap, regions);
+        drawFeatures(show, regions);
+        label = "Features";
         break;
       default:
         cv::cvtColor(cleaned, show, cv::COLOR_GRAY2BGR);
@@ -172,6 +183,10 @@ int main(int argc, char** argv) {
         display_mode = 3;
         std::println("Showing segmented regions");
         break;
+      case '4':
+        display_mode = 4;
+        std::println("Showing features");
+        break;
       case 'a':
         auto_mode = !auto_mode;
         std::println("Mode: {}", auto_mode ? "Auto" : "Manual");
@@ -191,6 +206,19 @@ int main(int argc, char** argv) {
         cv::imwrite(timestamp + "_threshold" + ".jpg", thresh);
         cv::imwrite(timestamp + "_cleaned" + ".jpg", cleaned);
         cv::imwrite(timestamp + "_segmented" + ".jpg", segmented);
+        // save features overlay image
+        cv::Mat featImg = colorizeRegions(labelMap, regions);
+        drawFeatures(featImg, regions);
+        cv::imwrite(timestamp + "_features" + ".jpg", featImg);
+        // loop through feature vectors and print to console
+        for (size_t i = 0; i < regions.size(); i++) {
+          std::print("Region {}: [", i);
+          for (size_t j = 0; j < regions[i].featureVector.size(); j++) {
+            std::print("{:.4f}{}", regions[i].featureVector[j],
+              (j < regions[i].featureVector.size() - 1) ? ", " : "");
+          }
+          std::println("]");
+        }
         std::println("Saved frame_{}", timestamp);
         break;
       }

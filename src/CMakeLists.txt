@@ -48,6 +48,7 @@ set(SOURCES
     threshold.cpp
     morphology.cpp
     segmentation.cpp
+    features.cpp
 )
 
 # --- ImGui source files (using OpenGL2 backend - simpler, no loader needed) ---

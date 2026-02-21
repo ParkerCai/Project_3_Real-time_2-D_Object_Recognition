@@ -32,6 +32,32 @@ static cv::Vec3b colorForLabel(int label) {
 
 
 /*
+  Build a color-coded region image without any overlays (no bbox, no centroid).
+  Used as a clean base for the features display mode to draw features on top of the colored regions.
+*/
+cv::Mat colorizeRegions(const cv::Mat& labelMap, const std::vector<RegionInfo>& regions) {
+  // Assign color to the region pixels (single pass)
+  // build a label:color map for faster color lookup
+  std::unordered_map<int, cv::Vec3b> labelColor;
+  for (const auto& region : regions) {
+    labelColor[region.label] = region.color;
+  }
+  cv::Mat result = cv::Mat::zeros(labelMap.size(), CV_8UC3); // Color-coded display image
+  // Iterate through the label image and assign colors
+  for (int r = 0; r < labelMap.rows; r++) {
+    for (int c = 0; c < labelMap.cols; c++) {
+      int label = labelMap.at<int>(r, c);
+      auto it = labelColor.find(label);
+      if (it != labelColor.end()) {
+        result.at<cv::Vec3b>(r, c) = it->second; // assign color based on label color map
+      }
+    }
+  }
+  return result;
+}
+
+
+/*
   Segment binary image into regions using connected components analysis.
 
   Steps:
@@ -147,24 +173,8 @@ cv::Mat segmentRegions(
   }
   prevRegions = regions;
 
-
-  // Assign color to the region pixels (single pass)
-  // build a label:color map for faster color lookup
-  std::unordered_map<int, cv::Vec3b> labelColor;
-  for (const auto& region : regions) {
-    labelColor[region.label] = region.color;
-  }
-  cv::Mat result = cv::Mat::zeros(binary.size(), CV_8UC3); // Color-coded display image
-  // Iterate through the label image and assign colors
-  for (int r = 0; r < labelMap.rows; r++) {
-    for (int c = 0; c < labelMap.cols; c++) {
-      int label = labelMap.at<int>(r, c);
-      auto it = labelColor.find(label);
-      if (it != labelColor.end()) {
-        result.at<cv::Vec3b>(r, c) = it->second; // assign color based on label color map
-      }
-    }
-  }
+  // Build color-coded region image, then draw AABB + centroids on top
+  cv::Mat result = colorizeRegions(labelMap, regions);
 
   // Draw bounding boxes and centroids
   for (const auto& region : regions) {

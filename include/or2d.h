@@ -23,7 +23,7 @@ cv::Mat dilate(const cv::Mat& src);
 struct RegionInfo {
   int label;
   cv::Point2f centroid;
-  cv::Rect bbox; // axis-aligned bounding box
+  cv::Rect bbox; // axis-aligned bounding box (AABB)
   int area;
   cv::Vec3b color;
   float theta; // angle of axis of least central moment (radians)
@@ -48,5 +48,29 @@ cv::Mat segmentRegions(const cv::Mat& binary,
   cv::Mat& labelMap,
   int minSize = 400, // min: 20x20 pixels area
   int maxRegions = 3); // max: 3 objects in the frame to recognize
+
+/**
+  @brief Compute features for a single region using region-based analysis.
+  Computes principal axis, oriented bounding box, percent filled, aspect ratio,
+  Hu moments, and assembles a feature vector.
+  @param labelMap integer label map (CV_32S) from connected components
+  @param region RegionInfo struct to populate with computed features
+*/
+/**
+  @brief Build a color-coded region image without overlays (no AABB, no centroid).
+  @param labelMap integer label map (CV_32S) from connected components
+  @param regions vector of RegionInfo structs with assigned colors
+  @return Clean color-coded image with only region fills
+*/
+cv::Mat colorizeRegions(const cv::Mat& labelMap, const std::vector<RegionInfo>& regions);
+
+void computeRegionFeatures(const cv::Mat& labelMap, RegionInfo& region);
+
+/**
+  @brief Draw feature overlays (OBB, principal axis, feature text) on an image.
+  @param image image to draw on (modified in-place)
+  @param regions vector of RegionInfo structs with computed features
+*/
+void drawFeatures(cv::Mat& image, const std::vector<RegionInfo>& regions);
 
 #endif // OR2D_H
