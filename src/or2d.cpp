@@ -35,6 +35,8 @@ void showHelp() {
   std::println("  q - quit");
   std::println("  s - save image");
   std::println("  a - toggle auto/manual");
+  std::println("  t - toggle training mode");
+  std::println("  n - save training sample");
   std::println("  + - increase threshold");
   std::println("  - - decrease threshold");
   std::println("  h - help");
@@ -90,6 +92,15 @@ int main(int argc, char** argv) {
   std::vector<RegionInfo> regions;
   cv::Mat segmented, labelMap;
 
+  // training mode variables
+  bool training_mode = false;
+  std::string db_filename = "data/objects_db.csv";
+
+  // Load existing training data
+  std::vector<std::string> train_labels;
+  std::vector<std::vector<double>> train_features;
+  loadTrainingData(db_filename, train_labels, train_features);
+
   // main loop
   while (true) {
     // grab frame from camera, treat as a stream
@@ -103,6 +114,18 @@ int main(int argc, char** argv) {
     cv::Mat display = frame.clone();
     std::string text = auto_mode ? "Auto" : "Manual=" + std::to_string(manual_thresh);
     cv::putText(display, text, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
+    cv::imshow("Original", display);
+
+
+    // show training mode status
+    if(training_mode) {
+      text += " | TRAINING MODE";
+      cv::putText(display, "Press 'n' to save example", cv::Point(10, 60), 
+                 cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 255), 2);
+    }
+    
+    cv::putText(display, text, cv::Point(10, 30), 
+               cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
     cv::imshow("Original", display);
 
     // do the processing
@@ -122,6 +145,8 @@ int main(int argc, char** argv) {
     for (auto& region : regions) {
       computeRegionFeatures(labelMap, region);
     }
+
+   
 
     // show result based on display mode
     cv::Mat show;
@@ -167,6 +192,31 @@ int main(int argc, char** argv) {
       case 'h':
         showHelp();
         break;
+      case 't':
+        training_mode = !training_mode;
+        std::println("Training mode: {}", training_mode ? "ON" : "OFF");
+        break;
+        
+      case 'n':
+        if(training_mode) {
+          if(regions.empty()) {
+            std::println("No object detected!");
+          } else {
+            RegionInfo& obj = regions[0];
+            
+            std::println("Enter object name: ");
+            std::string obj_name;
+            std::getline(std::cin, obj_name);
+            
+            if(!obj_name.empty()) {
+              saveTrainingExample(db_filename, obj_name, obj.featureVector);
+              loadTrainingData(db_filename, train_labels, train_features);
+            }
+          }
+        } else {
+          std::println("Not in training mode. Press 't' to toggle training mode.");
+      }
+      break;
       case '0':
         display_mode = 0;
         std::println("Showing original");
