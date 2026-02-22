@@ -119,9 +119,7 @@ cmake --build . --config Release
 ### Task 5: Training Data Collection
 - **Implementation**: Interactive training mode
 - **How it works**:
-  - Press t to enter training mode
   - Position object in view
-  - Press n to save example
   - Enter object name when prompted
   - Repeat 3-5 times per object at different orientations
 - **Database**: saves to data/objects_db.csv
@@ -136,7 +134,11 @@ cmake --build . --config Release
 - **Testing**: Run program and press `5` to view classification with labels
 
 ### Task 7: Evaluation (Confusion Matrix)
-
+- **Implementation**:  Interactive evaluation mode
+- **Features**: Normalizes by standard deviation for equal weighting
+- **Confidence**: Calculated as 1 / (1 + distance)
+- **File**: `src/evaluation.cpp`
+- **Testing**: 
 ### Task 8: Demo Video
 
 ### Task 9: Embedding-based Classification

@@ -37,6 +37,9 @@ void showHelp() {
   std::println("  a - toggle auto/manual");
   std::println("  t - toggle training mode");
   std::println("  n - save training sample");
+  std::println("  e - evaluation mode");
+  std::println("  r - record evaluation result");
+  std::println("  p - print confusion matrix");
   std::println("  + - increase threshold");
   std::println("  - - decrease threshold");
   std::println("  h - help");
@@ -88,18 +91,22 @@ int main(int argc, char** argv) {
   bool auto_mode = true;
   int manual_thresh = 120;
   int display_mode = 2; // 0=original, 1=threshold, 2=cleaned, 3=segmented regions, 4=features, 5=classification
+  bool training_mode = false;
+  bool eval_mode = false;
   cv::Mat frame;
   std::vector<RegionInfo> regions;
   cv::Mat segmented, labelMap;
-
-  // training mode variables
-  bool training_mode = false;
+  //save the training data in a csv file with label and features
   std::string db_filename = "data/objects_db.csv";
 
   // Load existing training data
   std::vector<std::string> train_labels;
   std::vector<std::vector<double>> train_features;
-  loadTrainingData(db_filename, train_labels, train_features);
+  int num_train = loadTrainingData(db_filename, train_labels, train_features);
+  std::println("Loaded {} examples", num_train);
+
+  // confusion matrix
+  ConfusionMatrix conf_matrix;
 
   // main loop
   while (true) {
@@ -122,6 +129,10 @@ int main(int argc, char** argv) {
       text += " | TRAINING MODE";
       cv::putText(display, "Press 'n' to save example", cv::Point(10, 60), 
                  cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 255), 2);
+    } else if(eval_mode) {
+      text += " | EVAL";
+      cv::putText(display, "Press 'r' to record result", cv::Point(10, 60),
+                 cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 0, 255), 2);
     }
     
     cv::putText(display, text, cv::Point(10, 30), 
@@ -202,7 +213,6 @@ int main(int argc, char** argv) {
         training_mode = !training_mode;
         std::println("Training mode: {}", training_mode ? "ON" : "OFF");
         break;
-        
       case 'n':
         if(training_mode) {
           if(regions.empty()) {
@@ -223,6 +233,36 @@ int main(int argc, char** argv) {
           std::println("Not in training mode. Press 't' to toggle training mode.");
       }
       break;
+      case 'e':
+        eval_mode = !eval_mode;
+        if(eval_mode) training_mode = false; 
+        std::println("Eval mode: {}", eval_mode ? "ON" : "OFF");
+        break;
+      case 'r':
+        if(eval_mode) {
+          if(regions.empty()) {
+            std::println("No object!");
+          } else {
+            double conf;
+            std::string pred = classifyObject(regions[0].featureVector,
+                                             train_labels, train_features, conf);
+            
+            std::println("Predicted: {}", pred);
+            std::println("Enter true label: ");
+            std::string true_name;
+            std::getline(std::cin, true_name);
+            
+            if(!true_name.empty()) {
+              addResultToMatrix(conf_matrix, true_name, pred);
+              std::println("Recorded");
+            }
+          }
+        }
+        break;
+      case 'p':
+        printConfusionMatrix(conf_matrix);
+        saveConfusionMatrix(conf_matrix, "confusion_matrix.csv");
+        break;
       case '0':
         display_mode = 0;
         std::println("Showing original");
@@ -291,6 +331,11 @@ int main(int argc, char** argv) {
 
     if (key == 'q') break;
   }
+
+  // print final results
+  std::println("\n=== Final Results ===");
+  printConfusionMatrix(conf_matrix);
+  saveConfusionMatrix(conf_matrix, "confusion_matrix.csv");
 
   // cleanup and exit
   cap.release();

@@ -101,4 +101,17 @@ void classifyAndLabel(cv::Mat& image,
                      std::vector<RegionInfo>& regions,
                      const std::vector<std::string>& train_labels,
                      const std::vector<std::vector<double>>& train_features);
+
+// Confusion matrix 
+struct ConfusionMatrix {
+    std::vector<std::string> classes;
+    std::map<std::string, int> class_index;
+    std::vector<std::vector<int>> matrix;
+};
+
+void addClassToMatrix(ConfusionMatrix& cm, const std::string& name);
+void addResultToMatrix(ConfusionMatrix& cm, const std::string& true_label, const std::string& predicted);
+void printConfusionMatrix(ConfusionMatrix& cm);
+void saveConfusionMatrix(ConfusionMatrix& cm, const std::string& filename);
+
 #endif // OR2D_H
