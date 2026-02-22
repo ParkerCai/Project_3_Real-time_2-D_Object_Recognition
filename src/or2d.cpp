@@ -45,10 +45,10 @@ void showHelp() {
   std::println("  2 - show cleaned");
   std::println("  3 - show segmented regions");
   std::println("  4 - show features (OBB + axis)");
+  std::println("  5 - show classification");
   std::println("========================");
   std::println("");
 }
-
 
 /*
   Main function: capture video from webcam and perform object recognition.
@@ -87,7 +87,7 @@ int main(int argc, char** argv) {
   // variables for the program
   bool auto_mode = true;
   int manual_thresh = 120;
-  int display_mode = 2; // 0=original, 1=threshold, 2=cleaned, 3=segmented
+  int display_mode = 2; // 0=original, 1=threshold, 2=cleaned, 3=segmented regions, 4=features, 5=classification
   cv::Mat frame;
   std::vector<RegionInfo> regions;
   cv::Mat segmented, labelMap;
@@ -174,6 +174,12 @@ int main(int argc, char** argv) {
         drawFeatures(show, regions);
         label = "Features";
         break;
+      case 5:
+        show = colorizeRegions(labelMap, regions);
+        drawFeatures(show, regions);
+        classifyAndLabel(show, regions, train_labels, train_features);
+        label = "Classification";
+        break;
       default:
         cv::cvtColor(cleaned, show, cv::COLOR_GRAY2BGR);
         label = "Cleaned";
@@ -237,6 +243,10 @@ int main(int argc, char** argv) {
         display_mode = 4;
         std::println("Showing features");
         break;
+      case '5':
+        display_mode = 5;
+        std::println("Showing classification");
+        break;
       case 'a':
         auto_mode = !auto_mode;
         std::println("Mode: {}", auto_mode ? "Auto" : "Manual");
@@ -260,6 +270,11 @@ int main(int argc, char** argv) {
         cv::Mat featImg = colorizeRegions(labelMap, regions);
         drawFeatures(featImg, regions);
         cv::imwrite(timestamp + "_features" + ".jpg", featImg);
+
+        cv::Mat classImg = colorizeRegions(labelMap, regions);
+        classifyAndLabel(classImg, regions, train_labels, train_features);
+        cv::imwrite(timestamp + "_classified.jpg", classImg);
+
         // loop through feature vectors and print to console
         for (size_t i = 0; i < regions.size(); i++) {
           std::print("Region {}: [", i);

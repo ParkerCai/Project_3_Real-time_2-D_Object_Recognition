@@ -50,6 +50,7 @@ set(SOURCES
     segmentation.cpp
     features.cpp
     training.cpp
+    classification.cpp
 )
 
 # --- ImGui source files (using OpenGL2 backend - simpler, no loader needed) ---

@@ -85,4 +85,20 @@ int loadTrainingData(const std::string& filename,
 void initializeDatabase(const std::string& filename);
 
 
+// Classification
+std::vector<double> computeStdDevs(const std::vector<std::vector<double>>& features);
+
+double scaledEuclideanDistance(const std::vector<double>& f1,
+                               const std::vector<double>& f2,
+                               const std::vector<double>& stddevs);
+
+std::string classifyObject(const std::vector<double>& query,
+                           const std::vector<std::string>& train_labels,
+                           const std::vector<std::vector<double>>& train_features,
+                           double& accuracy);
+
+void classifyAndLabel(cv::Mat& image,
+                     std::vector<RegionInfo>& regions,
+                     const std::vector<std::string>& train_labels,
+                     const std::vector<std::vector<double>>& train_features);
 #endif // OR2D_H
