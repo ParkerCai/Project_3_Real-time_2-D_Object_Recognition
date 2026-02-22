@@ -51,6 +51,7 @@ set(SOURCES
     features.cpp
     training.cpp
     classification.cpp
+    evaluation.cpp
 )
 
 # --- ImGui source files (using OpenGL2 backend - simpler, no loader needed) ---
