@@ -96,15 +96,14 @@ cmake --build . --config Release
 ## Tasks
 
 ### Task 1: Thresholding
-- **Status**: Complete (written from scratch)
-- **Implementation**: ISODATA algorithm (k-means with k=2) for authomatic threshold calculation
+- **Implementation**: ISODATA algorithm (k-means with k=2) for authomatic threshold calculation built from scratch
 - **Method**: Sample 1/16 of pixels, run k-means to find object and background clusters, use midpoint as threshold
 - **From Scratch**: Manual pixel-by-pixel thresholding loop (NOT using cv::threshold())
+- **File**: `src/thresholding.cpp`
 - **Testing**: .\bin\or2d.exe
 
 
 ### Task 2: Morphological Filtering (Clean Up)
-- **Status**: Complete (written from scratch)
 - **Implementation**: Erosion and dilation operations built from scratch
 - **Strategy**: 
   - Opening (erode → dilate) to remove noise
@@ -118,8 +117,23 @@ cmake --build . --config Release
 ### Task 4: Feature Computation
 
 ### Task 5: Training Data Collection
+- **Implementation**: Interactive training mode
+- **How it works**:
+  - Press t to enter training mode
+  - Position object in view
+  - Press n to save example
+  - Enter object name when prompted
+  - Repeat 3-5 times per object at different orientations
+- **Database**: saves to data/objects_db.csv
+- **File**: `src/training.cpp`
+- **Testing**: Run program and press `4` to view features and then press `t` to enter training mode, and press `n` to save
 
 ### Task 6: Classification
+- **Implementation**: Nearest-neighbor with scaled Euclidean distance using sqrt(Σ((f1[i] - f2[i]) / stddev[i])²)
+- **Features**: Normalizes by standard deviation for equal weighting
+- **Confidence**: Calculated as 1 / (1 + distance)
+- **File**: `src/classification.cpp`
+- **Testing**: Run program and press `5` to view classification with labels
 
 ### Task 7: Evaluation (Confusion Matrix)
 
