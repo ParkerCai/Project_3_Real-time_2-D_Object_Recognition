@@ -4,8 +4,8 @@
     February 19, 2026
     CS5330 - Project 3: Real-time 2-D Object Recognition
 
-    Classification- Identify unknown objects using scaled Euclidean Distance
-    Uses nearest neighbor classification with a distance-based confidence score.
+    Classification- Identify objects from the training data 
+    Uses nearest neighbor classification with a distance-based accuracy score.
 
 */
 
@@ -100,7 +100,7 @@ std::string classifyObject(const std::vector<double>& query,
     
     // accuracy based on distance
     acccuracy = 1.0 / (1.0 + min_dist);
-    
+
     return train_labels[best_idx];
 }
 
