@@ -77,6 +77,12 @@ void computeRegionFeatures(const cv::Mat& labelMap, RegionInfo& region) {
     }
   }
 
+  // Store extents in the region info for CNN embedding image prep
+  region.uMin = uMin;
+  region.uMax = uMax;
+  region.vMin = vMin;
+  region.vMax = vMax;
+
   float obbWidth = uMax - uMin;
   float obbHeight = vMax - vMin;
 

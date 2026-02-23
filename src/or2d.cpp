@@ -12,8 +12,9 @@
 #include <iostream>
 #include <print>
 #include <chrono>
+#include <filesystem>
 #include "or2d.h"
-
+#include "utilities.h"   // for CNN embedding utilities
 
 /*
   Use the chrono time library to get the current time
@@ -36,7 +37,8 @@ void showHelp() {
   std::println("  s - save image");
   std::println("  a - toggle auto/manual");
   std::println("  t - toggle training mode");
-  std::println("  n - save training sample");
+  std::println("  n - save training sample (features)");
+  std::println("  c - save CNN training sample (embedding)");
   std::println("  e - evaluation mode");
   std::println("  r - record evaluation result");
   std::println("  p - print confusion matrix");
@@ -48,7 +50,8 @@ void showHelp() {
   std::println("  2 - show cleaned");
   std::println("  3 - show segmented regions");
   std::println("  4 - show features (OBB + axis)");
-  std::println("  5 - show classification");
+  std::println("  5 - show classification (hand-built features)");
+  std::println("  6 - show classification (CNN embedding)");
   std::println("========================");
   std::println("");
 }
@@ -57,6 +60,11 @@ void showHelp() {
   Main function: capture video from webcam and perform object recognition.
 */
 int main(int argc, char** argv) {
+  // get project root from executable path (exe is in bin/)
+  std::filesystem::path exePath = std::filesystem::absolute(argv[0]);
+  std::filesystem::path projectRoot = exePath.parent_path().parent_path();
+  std::println("Project root: {}", projectRoot.string());
+
   // get camera number
   int camNum = 0;
   if (argc > 1) {
@@ -90,28 +98,50 @@ int main(int argc, char** argv) {
   // variables for the program
   bool auto_mode = true;
   int manual_thresh = 120;
-  int display_mode = 2; // 0=original, 1=threshold, 2=cleaned, 3=segmented regions, 4=features, 5=classification
+  int display_mode = 2; // 0=original, 1=threshold, 2=cleaned, 3=segmented, 4=features, 5=classification, 6=CNN classification
   bool training_mode = false;
   bool eval_mode = false;
   cv::Mat frame;
   std::vector<RegionInfo> regions;
   cv::Mat segmented, labelMap;
-  //save the training data in a csv file with label and features
-  std::string db_filename = "data/objects_db.csv";
+  // save the training data in a csv file with label and features
+  std::string db_filename = (projectRoot / "data" / "objects_db.csv").string();
+  std::string cnn_db_filename = (projectRoot / "data" / "objects_cnn_db.csv").string();
 
-  // Load existing training data
+  // Load existing training data (hand-built features)
   std::vector<std::string> train_labels;
   std::vector<std::vector<double>> train_features;
   int num_train = loadTrainingData(db_filename, train_labels, train_features);
-  std::println("Loaded {} examples", num_train);
+  std::println("Loaded {} hand-built feature examples", num_train);
 
-  // confusion matrix
+  // Load existing CNN training data (embeddings)
+  std::vector<std::string> cnn_train_labels;
+  std::vector<std::vector<float>> cnn_train_features;
+  int num_cnn_train = loadTrainingData(cnn_db_filename, cnn_train_labels, cnn_train_features);
+  std::println("Loaded {} CNN embedding examples", num_cnn_train);
+
+  // Load ResNet18 CNN model for computing embeddings
+  std::string cnn_model_path = (projectRoot / "data" / "CNN" / "resnet18-v2-7.onnx").string();
+  cv::dnn::Net cnn_net;
+  try {
+    cnn_net = cv::dnn::readNetFromONNX(cnn_model_path);
+    std::println("ResNet18 CNN model loaded successfully.");
+  } catch (const cv::Exception& e) {
+    std::println("ERROR: Could not load CNN model from {}", cnn_model_path);
+    std::println("  {}", e.what());
+    std::println("CNN embedding classification will be disabled.");
+  }
+
+  // Confusion matrix
   ConfusionMatrix conf_matrix;
 
-  // main loop
+  /* 
+    Main video processing loop 
+  */
   while (true) {
     // grab frame from camera, treat as a stream
     cap >> frame;
+    // Error Handling: check if the frame was captured successfully
     if (frame.empty()) {
       std::println("frame is empty");
       break;
@@ -125,18 +155,19 @@ int main(int argc, char** argv) {
 
 
     // show training mode status
-    if(training_mode) {
+    if (training_mode) {
       text += " | TRAINING MODE";
-      cv::putText(display, "Press 'n' to save example", cv::Point(10, 60), 
-                 cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 255), 2);
-    } else if(eval_mode) {
+      cv::putText(display, "Press 'n' to save example", cv::Point(10, 60),
+        cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 255), 2);
+    }
+    else if (eval_mode) {
       text += " | EVAL";
       cv::putText(display, "Press 'r' to record result", cv::Point(10, 60),
-                 cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 0, 255), 2);
+        cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 0, 255), 2);
     }
-    
-    cv::putText(display, text, cv::Point(10, 30), 
-               cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
+
+    cv::putText(display, text, cv::Point(10, 30),
+      cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
     cv::imshow("Original", display);
 
     // do the processing
@@ -157,9 +188,34 @@ int main(int argc, char** argv) {
       computeRegionFeatures(labelMap, region);
     }
 
-   
+    // Compute CNN embeddings for each region
+    if (!cnn_net.empty()) {
+      for (auto& region : regions) {
+        // extract axis-aligned region of interest (ROI)
+        cv::Mat embImg;
+        prepEmbeddingImage(frame, embImg,
+          (int)region.centroid.x, (int)region.centroid.y,
+          region.theta,
+          region.uMin, region.uMax,
+          region.vMin, region.vMax, 0);
 
-    // show result based on display mode
+        // compute the CNN embedding
+        if (!embImg.empty() && embImg.cols > 0 && embImg.rows > 0) { // check if the ROI is valid
+          cv::Mat embedding;
+          getEmbedding(embImg, embedding, cnn_net, 0);
+
+          // store embedding directly as float (native DNN precision)
+          region.embeddingVector.clear();
+          for (int i = 0; i < embedding.cols; i++) {
+            region.embeddingVector.push_back(embedding.at<float>(0, i));
+          }
+        }
+      }
+    }
+
+
+
+    // Show result based on display mode
     cv::Mat show;
     std::string label;
     switch (display_mode) {
@@ -189,7 +245,13 @@ int main(int argc, char** argv) {
         show = colorizeRegions(labelMap, regions);
         drawFeatures(show, regions);
         classifyAndLabel(show, regions, train_labels, train_features);
-        label = "Classification";
+        label = "Classification (Hand-built Features)";
+        break;
+      case 6:
+        show = colorizeRegions(labelMap, regions);
+        drawFeatures(show, regions);
+        classifyAndLabelCNN(show, regions, cnn_train_labels, cnn_train_features);
+        label = "Classification (CNN)";
         break;
       default:
         cv::cvtColor(cleaned, show, cv::COLOR_GRAY2BGR);
@@ -214,49 +276,82 @@ int main(int argc, char** argv) {
         std::println("Training mode: {}", training_mode ? "ON" : "OFF");
         break;
       case 'n':
-        if(training_mode) {
-          if(regions.empty()) {
+        if (training_mode) {
+          if (regions.empty()) {
             std::println("No object detected!");
-          } else {
+          }
+          else {
             RegionInfo& obj = regions[0];
-            
+
             std::println("Enter object name: ");
             std::string obj_name;
             std::getline(std::cin, obj_name);
-            
-            if(!obj_name.empty()) {
+
+            if (!obj_name.empty()) {
               saveTrainingExample(db_filename, obj_name, obj.featureVector);
               loadTrainingData(db_filename, train_labels, train_features);
             }
           }
-        } else {
+        }
+        else {
           std::println("Not in training mode. Press 't' to toggle training mode.");
-      }
-      break;
+        }
+        break;
       case 'e':
         eval_mode = !eval_mode;
-        if(eval_mode) training_mode = false; 
+        if (eval_mode) training_mode = false;
         std::println("Eval mode: {}", eval_mode ? "ON" : "OFF");
         break;
       case 'r':
-        if(eval_mode) {
-          if(regions.empty()) {
+        if (eval_mode) {
+          if (regions.empty()) {
             std::println("No object!");
-          } else {
+          }
+          else {
             double conf;
             std::string pred = classifyObject(regions[0].featureVector,
-                                             train_labels, train_features, conf);
-            
+              train_labels, train_features, conf);
+
             std::println("Predicted: {}", pred);
             std::println("Enter true label: ");
             std::string true_name;
             std::getline(std::cin, true_name);
-            
-            if(!true_name.empty()) {
+
+            if (!true_name.empty()) {
               addResultToMatrix(conf_matrix, true_name, pred);
               std::println("Recorded");
             }
           }
+        }
+        break;
+      case 'c':  // Save CNN embedding training sample
+        if (training_mode) {
+          if (regions.empty()) {
+            std::println("No object!");
+          }
+          else if (cnn_net.empty()) {
+            std::println("CNN model not loaded!");
+          }
+          else {
+            RegionInfo& obj = regions[0];
+            if (obj.embeddingVector.empty()) {
+              std::println("No embedding computed for this object.");
+            }
+            else {
+              std::println("Enter object name for CNN training: ");
+              std::string obj_name;
+              std::getline(std::cin, obj_name);
+
+              if (!obj_name.empty()) {
+                saveTrainingExample(cnn_db_filename, obj_name, obj.embeddingVector);
+                loadTrainingData(cnn_db_filename, cnn_train_labels, cnn_train_features);
+                std::println("CNN embedding recorded. {} CNN examples total.", cnn_train_labels.size());
+              }
+            }
+          }
+        }
+        else {
+          std::println("Not in training mode. Press 't' to toggle training mode.");
         }
         break;
       case 'p':
@@ -285,7 +380,11 @@ int main(int argc, char** argv) {
         break;
       case '5':
         display_mode = 5;
-        std::println("Showing classification");
+        std::println("Showing classification (hand-built features)");
+        break;
+      case '6':
+        display_mode = 6;
+        std::println("Showing classification (CNN embedding)");
         break;
       case 'a':
         auto_mode = !auto_mode;

@@ -32,6 +32,11 @@ struct RegionInfo {
   float percentFilled; // = region area / OBB area
   double huMoments[7]; // 7 moments from Hu moment invariants
   std::vector<double> featureVector; // assembled feature vector for classification
+  // OBB projection extents (for CNN embedding image prep)
+  float uMin = 0, uMax = 0; // primary axis extents
+  float vMin = 0, vMax = 0; // secondary axis extents
+  // CNN embedding vector (512-d from ResNet18, use float for native DNN precision)
+  std::vector<float> embeddingVector;
 };
 
 /**
@@ -74,39 +79,63 @@ void computeRegionFeatures(const cv::Mat& labelMap, RegionInfo& region);
 void drawFeatures(cv::Mat& image, const std::vector<RegionInfo>& regions);
 
 // Training
-void saveTrainingExample(const std::string& filename, 
-                        const std::string& label,
-                        const std::vector<double>& features);
+void saveTrainingExample(const std::string& filename,
+  const std::string& label,
+  const std::vector<double>& features);
+// Overload for CNN embedding data (float)
+void saveTrainingExample(const std::string& filename,
+  const std::string& label,
+  const std::vector<float>& features);
 
 int loadTrainingData(const std::string& filename,
-                     std::vector<std::string>& labels,
-                     std::vector<std::vector<double>>& features);
+  std::vector<std::string>& labels,
+  std::vector<std::vector<double>>& features);
+// Overload for CNN embedding data (float)  
+int loadTrainingData(const std::string& filename,
+  std::vector<std::string>& labels,
+  std::vector<std::vector<float>>& features);
 
 void initializeDatabase(const std::string& filename);
 
 
-// Classification
+// Classification (hand-built features)
 std::vector<double> computeStdDevs(const std::vector<std::vector<double>>& features);
 
 double scaledEuclideanDistance(const std::vector<double>& f1,
-                               const std::vector<double>& f2,
-                               const std::vector<double>& stddevs);
+  const std::vector<double>& f2,
+  const std::vector<double>& stddevs);
 
 std::string classifyObject(const std::vector<double>& query,
-                           const std::vector<std::string>& train_labels,
-                           const std::vector<std::vector<double>>& train_features,
-                           double& accuracy);
+  const std::vector<std::string>& train_labels,
+  const std::vector<std::vector<double>>& train_features,
+  double& accuracy);
 
 void classifyAndLabel(cv::Mat& image,
-                     std::vector<RegionInfo>& regions,
-                     const std::vector<std::string>& train_labels,
-                     const std::vector<std::vector<double>>& train_features);
+  std::vector<RegionInfo>& regions,
+  const std::vector<std::string>& train_labels,
+  const std::vector<std::vector<double>>& train_features);
+
+
+// Classification (CNN embedding - one-shot, uses float for native DNN precision)
+float sumOfSquaredDifference(const std::vector<float>& featuresA,
+  const std::vector<float>& featuresB);
+
+std::string classifyObjectCNN(const std::vector<float>& query,
+  const std::vector<std::string>& train_labels,
+  const std::vector<std::vector<float>>& train_features,
+  float& accuracy);
+
+void classifyAndLabelCNN(cv::Mat& image,
+  std::vector<RegionInfo>& regions,
+  const std::vector<std::string>& train_labels,
+  const std::vector<std::vector<float>>& train_features);
+
 
 // Confusion matrix 
 struct ConfusionMatrix {
-    std::vector<std::string> classes;
-    std::map<std::string, int> class_index;
-    std::vector<std::vector<int>> matrix;
+  std::vector<std::string> classes;
+  std::map<std::string, int> class_index;
+  std::vector<std::vector<int>> matrix;
 };
 
 void addClassToMatrix(ConfusionMatrix& cm, const std::string& name);
