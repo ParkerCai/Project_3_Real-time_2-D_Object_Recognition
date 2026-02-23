@@ -71,9 +71,10 @@ cmake -Wno-dev -G "Visual Studio 17 2022" -A x64 -DOpenCV_DIR="C:\opencv_build\b
 cmake --build . --config Release
 ```
 
-
 <!-- How to run the program -->
+
 ## Running
+
 ```bash
 # default camera
 .\bin\or2d.exe
@@ -88,24 +89,25 @@ cmake --build . --config Release
 - `s` - save images (for report)
 - `a` - toggle auto/manual threshold
 - `+`/`-` - adjust threshold
-- `1` - Show original 
-- `2` - Show threshold only 
-- `3` - Show cleaned (morphology) 
+- `1` - Show original
+- `2` - Show threshold only
+- `3` - Show cleaned (morphology)
 - `h` - help
 
 ## Tasks
 
 ### Task 1: Thresholding
+
 - **Implementation**: ISODATA algorithm (k-means with k=2) for authomatic threshold calculation built from scratch
 - **Method**: Sample 1/16 of pixels, run k-means to find object and background clusters, use midpoint as threshold
 - **From Scratch**: Manual pixel-by-pixel thresholding loop (NOT using cv::threshold())
 - **File**: `src/thresholding.cpp`
 - **Testing**: .\bin\or2d.exe
 
-
 ### Task 2: Morphological Filtering (Clean Up)
+
 - **Implementation**: Erosion and dilation operations built from scratch
-- **Strategy**: 
+- **Strategy**:
   - Opening (erode → dilate) to remove noise
   - Closing (dilate → erode) to fill holes
 - **From Scratch**: Manual neighbor-checking loops for erosion and dilation (NOT using cv::erode() or cv::dilate())
@@ -114,9 +116,33 @@ cmake --build . --config Release
 
 ### Task 3: Connected Components (Segmentation)
 
+- **Implementation**: Region segmentation using OpenCV's `connectedComponentsWithStats` (Spaghetti4C / Bolelli et al. 2021 two-pass union-find with DAG-based decision trees)
+- **Filtering**:
+  - Ignores regions smaller than a minimum area (default 400 px = 20×20)
+  - Skips regions touching the image border
+  - Keeps only the top N largest regions (default N=3) for multi-object recognition
+- **Display**: Color-coded region map using hardcoded color palette. Centroid matching between frames prevents color flickering
+- **Overlays**: Axis-aligned bounding boxes (AABB) and centroids (white dots) drawn on the color-coded result
+- **File**: `src/segmentation.cpp`
+- **Testing**: Run program and press `3` to view segmented regions
+
 ### Task 4: Feature Computation
 
+- **Implementation**: Region-based analysis (not boundary-based) for translation, scale, and rotation invariant features
+- **Computed features**:
+  1. **Axis of least central moment** (theta): `0.5 * atan2(2 * mu11, mu20 - mu02)` — the angle that minimizes the moment of inertia through the centroid
+  2. **Oriented bounding box (OBB)**: Projects all region pixels onto the principal and perpendicular axes relative to the centroid, tracking min/max extents to get the OBB
+  3. **Percent filled**: Region area / OBB area — measures how much of the OBB is occupied (invariant to translation, scale, rotation)
+  4. **OBB aspect ratio**: min(width, height) / max(width, height), always in [0, 1] (invariant to translation, scale, rotation)
+  5. **Hu moment invariants**: Computed via `cv::HuMoments()` from `cv::moments()` — 7 moments invariant to translation, scale, and rotation. Uses hu[0] and hu[1] as log10(|hu[i]|) for manageable magnitude
+- **Feature vector**: {percentFilled, bboxRatio, log|hu0|, log|hu1|} (4-d)
+- **Moments used**: `cv::moments(mask, true)` computes spatial moments (m00, m10, m01, ...), central moments (mu20, mu11, mu02, ...), and normalized central moments. `binaryImage=true` treats any nonzero pixel as 1
+- **Display**: OBB drawn as a white polygon, principal axis as a blue line, centroid as a red dot, percent filled and aspect ratio as text
+- **File**: `src/features.cpp`
+- **Testing**: Run program and press `4` to view features (OBB + axis) overlaid on the color-coded regions
+
 ### Task 5: Training Data Collection
+
 - **Implementation**: Interactive training mode
 - **How it works**:
   - Position object in view
@@ -126,22 +152,41 @@ cmake --build . --config Release
 - **File**: `src/training.cpp`
 - **Testing**: Run program and press `4` to view features and then press `t` to enter training mode, and press `n` to save
 
-### Task 6: Classification
+### Task 6: Classification (Hand-built features)
+
 - **Implementation**: Nearest-neighbor with scaled Euclidean distance using sqrt(Σ((f1[i] - f2[i]) / stddev[i])²)
 - **Features**: Normalizes by standard deviation for equal weighting
 - **Confidence**: Calculated as 1 / (1 + distance)
 - **File**: `src/classification.cpp`
+- **Database**: Saves (4-d) hand-built features to `data/objects_db.csv`
 - **Testing**: Run program and press `5` to view classification with labels
 
 ### Task 7: Evaluation (Confusion Matrix)
+
 - **Implementation**:  Interactive evaluation mode
 - **Features**: Normalizes by standard deviation for equal weighting
 - **Confidence**: Calculated as 1 / (1 + distance)
 - **File**: `src/evaluation.cpp`
-- **Testing**: 
+- **Testing**: Run program and press `e` to enter evaluation mode
+
 ### Task 8: Demo Video
 
 ### Task 9: Embedding-based Classification
+
+- **Implementation**: One-shot classification using CNN (ResNet18) image embeddings
+- **Pipeline**:
+  1. Uses centroid (cx, cy), principal axis angle (theta), and OBB extents (uMin, uMax, vMin, vMax) from the feature computation step
+  2. Rotates the original image so the region's primary axis is aligned with the X-axis (rotate -theta)
+  3. Extracts an axis-aligned region of interest (ROI) from the rotated image corresponding to the region's bounding box
+  4. Reshapes the ROI to 224×224 for CNN input
+  5. Passes the image through a pre-trained ResNet18 network to get a 512-d embedding from the second to last layer
+- **Model**: ResNet18 ONNX model (`data/CNN/resnet18-v2-7.onnx`)
+- **Distance Metric**: Sum-squared difference (SSD) between embedding vectors
+- **One-shot**: Only requires a single training example per object class
+- **Database**: Saves (512-d) CNN embeddings to `data/objects_cnn_db.csv`
+- **Utilities**: `prepEmbeddingImage()` and `getEmbedding()` in `src/utilities.cpp` (based on code by Prof. Bruce A. Maxwell)
+- **Files**: `src/utilities.cpp`, `src/classification.cpp`, `src/or2d.cpp`
+- **Testing**: Run program, press `t` for training mode, press `c` to save a CNN embedding, then press `6` to view CNN classification. Press `5` to compare against hand-built feature classification.
 
 ## Extensions
 
