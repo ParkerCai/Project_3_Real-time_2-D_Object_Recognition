@@ -38,6 +38,7 @@ void showHelp() {
   std::println("  a - toggle auto/manual");
   std::println("  t - toggle training mode");
   std::println("  n - save training sample (features)");
+  std::println("  f - toggle CNN eval mode");
   std::println("  c - save CNN training sample (embedding)");
   std::println("  m - print CNN confusion matrix");
   std::println("  e - evaluation mode");
