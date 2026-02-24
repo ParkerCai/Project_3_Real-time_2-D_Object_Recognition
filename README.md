@@ -19,7 +19,8 @@ Given a live video feed or a set of images, the system:
 2. Cleans the binary image using morphological filtering
 3. Segments individual regions via connected components analysis
 4. Computes rotation/scale-invariant features (axis of least central moment, oriented bounding box, Hu moments)
-5. Classifies each object against a trained database using nearest-neighbor matching with scaled Euclidean distance
+5. Train new objects in the interactive training mode
+6. Classifies each object against a trained database using nearest-neighbor matching with scaled Euclidean distance
 
 An embedding-based classification pipeline using a DNN (ResNet18) is also explored for comparison.
 
@@ -91,8 +92,11 @@ cmake --build . --config Release
 - `t` - toggle training mode
 - `n` - Save training example (in training mode)
 - `e` - Toggle evaluation mode
+- `f` - Toggle cnn mode
+- `c` - Record cnn results
 - `r` - Record evaluation result (in eval mode)
 - `p` - Print confusion matrix
+- `m` - Print cnn confusion matrix
 - `u` - Toggle unknown detection (extension)
 - `l` - Learn unknown object (extension)
 - `+`/`-` - adjust threshold
