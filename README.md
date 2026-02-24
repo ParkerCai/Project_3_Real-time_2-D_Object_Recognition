@@ -37,9 +37,7 @@ Project_3_Real-time_2-D_Object_Recognition/
 │   ├── CMakeLists.txt      # Build configuration
 │   ├── or2d.cpp            # Main program
 │   └── gui/                # Dear ImGui GUI application
-│       ├── cbir_gui.cpp    # GUI main source
-│       ├── app_icon.ico    # Windows executable icon
-│       └── app_icon.rc     # Windows resource file
+│       └── or2d_gui.cpp    # GUI main source
 ├── report/                 # Report documents
 ├── build.bat               # Build script
 ├── package_release.bat     # Release packaging script
@@ -215,6 +213,19 @@ cmake --build . --config Release
 - **Database**: saves to data/objects_db.csv
 - **File**: `src/training.cpp`
 - **Testing**: Run program and press `4` to view features and then press `t` to enter training mode, and press `n` to save
+
+### Extension: GUI
+
+- **Framework**: Dear ImGui with GLFW + OpenGL2 backend
+- **Features**:
+  - Three-panel layout: left (original video + evaluation), middle (result video + display/threshold/training controls), right (Features DB and CNN DB lists)
+  - Display mode dropdown (original, threshold, cleaned, segmented, features, classification, CNN classification)
+  - Training mode with object name input and Save Features / Save CNN buttons
+  - Evaluation section with Record Result, true-label input, and confusion matrix heatmaps (Features and CNN) with Clear and Save to CSV
+  - DB manager: vertically split lists for Features DB and CNN DB with Reload and per-row Delete
+  - Same-size original and result video feeds; resizable panel splitters (default 40% / 40% / 20%)
+  - Keyboard shortcuts (Q quit, T training, E eval, N/C save features/CNN, R record, P save matrix, S save images, A threshold, 0–6 display mode, +/- threshold)
+- **Run**: `.\bin\or2d_gui.exe`
 
 ## Demo
 
