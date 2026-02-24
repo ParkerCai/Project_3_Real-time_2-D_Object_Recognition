@@ -88,10 +88,20 @@ cmake --build . --config Release
 - `q` - quit
 - `s` - save images (for report)
 - `a` - toggle auto/manual threshold
+- `t` - toggle training mode
+- `n` - Save training example (in training mode)
+- `e` - Toggle evaluation mode
+- `r` - Record evaluation result (in eval mode)
+- `p` - Print confusion matrix
+- `u` - Toggle unknown detection (extension)
+- `l` - Learn unknown object (extension)
 - `+`/`-` - adjust threshold
 - `1` - Show original
 - `2` - Show threshold only
 - `3` - Show cleaned (morphology)
+- `4` - Show features (OBB + axis)
+- `5` - Show classification
+- `6` - Show CNN
 - `h` - help
 
 ## Tasks
@@ -102,7 +112,7 @@ cmake --build . --config Release
 - **Method**: Sample 1/16 of pixels, run k-means to find object and background clusters, use midpoint as threshold
 - **From Scratch**: Manual pixel-by-pixel thresholding loop (NOT using cv::threshold())
 - **File**: `src/thresholding.cpp`
-- **Testing**: .\bin\or2d.exe
+- **Testing**: .\bin\or2d.exe and press `1` to view thresholded output
 
 ### Task 2: Morphological Filtering (Clean Up)
 
@@ -112,7 +122,7 @@ cmake --build . --config Release
   - Closing (dilate → erode) to fill holes
 - **From Scratch**: Manual neighbor-checking loops for erosion and dilation (NOT using cv::erode() or cv::dilate())
 - **File**: `src/morphology.cpp`
-- **Testing**: Run program and press `3` to view cleaned output
+- **Testing**: Run program and press `2` to view cleaned output
 
 ### Task 3: Connected Components (Segmentation)
 
@@ -167,7 +177,7 @@ cmake --build . --config Release
 - **Features**: Normalizes by standard deviation for equal weighting
 - **Confidence**: Calculated as 1 / (1 + distance)
 - **File**: `src/evaluation.cpp`
-- **Testing**: Run program and press `e` to enter evaluation mode
+- **Testing**: Run program and press `e` to enter evaluation mode, then press `r` to record the object and press `p` to print confusion matrix
 
 ### Task 8: Demo Video
 
@@ -189,6 +199,18 @@ cmake --build . --config Release
 - **Testing**: Run program, press `t` for training mode, press `c` to save a CNN embedding, then press `6` to view CNN classification. Press `5` to compare against hand-built feature classification.
 
 ## Extensions
+### Unknown Object Detection & Auto Learning
+
+- **Implementation**:  Automatic detection of unknown objects based on confidence threshold
+- **Features**: System monitors classification confidence and objects with confidence < 50% flagged as "Unknown" will be in red. System will prompt user for the name if user wants to learn the new object and add to database. Object will turn yellow once it is known.
+- **File**: `src/unknown.cpp`
+- **Testing**: Run program and press `u` to enter unknown detection mode, then press `5` to show classification view and press `l` to learn new object 
+
+### Extended Object Database 
+- **Implementation**: We entered 5 more objects in the Interactive training mode
+- **Database**: saves to data/objects_db.csv
+- **File**: `src/training.cpp`
+- **Testing**: Run program and press `4` to view features and then press `t` to enter training mode, and press `n` to save
 
 ## Demo
 

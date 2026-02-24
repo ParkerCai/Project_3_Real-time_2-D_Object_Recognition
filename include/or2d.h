@@ -143,4 +143,22 @@ void addResultToMatrix(ConfusionMatrix& cm, const std::string& true_label, const
 void printConfusionMatrix(ConfusionMatrix& cm);
 void saveConfusionMatrix(ConfusionMatrix& cm, const std::string& filename);
 
+// Extension: Unknown object detection and auto-learning
+bool isUnknownObject(const std::vector<double>& query,
+                     const std::vector<std::string>& train_labels,
+                     const std::vector<std::vector<double>>& train_features,
+                     double threshold = 0.5);
+
+std::string classifyWithUnknown(const std::vector<double>& query,
+                                const std::vector<std::string>& train_labels,
+                                const std::vector<std::vector<double>>& train_features,
+                                double& confidence,
+                                double unknown_threshold = 0.5);
+
+void classifyAndLabelWithUnknown(cv::Mat& image,
+                                 std::vector<RegionInfo>& regions,
+                                 const std::vector<std::string>& train_labels,
+                                 const std::vector<std::vector<double>>& train_features,
+                                 double unknown_threshold = 0.5);
+
 #endif // OR2D_H

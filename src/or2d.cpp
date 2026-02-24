@@ -42,6 +42,8 @@ void showHelp() {
   std::println("  e - evaluation mode");
   std::println("  r - record evaluation result");
   std::println("  p - print confusion matrix");
+  std::println("  u - toggle unknown detection");
+  std::println("  l - auto-learn unknown object");
   std::println("  + - increase threshold");
   std::println("  - - decrease threshold");
   std::println("  h - help");
@@ -101,6 +103,8 @@ int main(int argc, char** argv) {
   int display_mode = 2; // 0=original, 1=threshold, 2=cleaned, 3=segmented, 4=features, 5=classification, 6=CNN classification
   bool training_mode = false;
   bool eval_mode = false;
+  bool unknown_detection = false;  // unknown detection mode
+  double unknown_threshold = 0.5;  // confidence threshold for unknown
   cv::Mat frame;
   std::vector<RegionInfo> regions;
   cv::Mat segmented, labelMap;
@@ -159,11 +163,14 @@ int main(int argc, char** argv) {
       text += " | TRAINING MODE";
       cv::putText(display, "Press 'n' to save example", cv::Point(10, 60),
         cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 255), 2);
-    }
-    else if (eval_mode) {
+    } else if (eval_mode) {
       text += " | EVAL";
       cv::putText(display, "Press 'r' to record result", cv::Point(10, 60),
         cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 0, 255), 2);
+    } else if(unknown_detection) {
+      text += " | UNKNOWN DETECT";
+      cv::putText(display, "Press 'l' to learn unknown", cv::Point(10, 60),
+                 cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 128, 0), 2);
     }
 
     cv::putText(display, text, cv::Point(10, 30),
@@ -243,9 +250,12 @@ int main(int argc, char** argv) {
         break;
       case 5:
         show = colorizeRegions(labelMap, regions);
-        drawFeatures(show, regions);
-        classifyAndLabel(show, regions, train_labels, train_features);
-        label = "Classification (Hand-built Features)";
+        if(unknown_detection) {
+          classifyAndLabelWithUnknown(show, regions, train_labels, train_features, unknown_threshold);
+        } else {
+          classifyAndLabel(show, regions, train_labels, train_features);
+        }
+        label = "Classification";
         break;
       case 6:
         show = colorizeRegions(labelMap, regions);
@@ -357,6 +367,43 @@ int main(int argc, char** argv) {
       case 'p':
         printConfusionMatrix(conf_matrix);
         saveConfusionMatrix(conf_matrix, "confusion_matrix.csv");
+        break;
+      case 'u':
+        unknown_detection = !unknown_detection;
+        if(unknown_detection) {
+          training_mode = false;
+          eval_mode = false;
+        }
+        std::println("Unknown detection: {}", unknown_detection ? "ON" : "OFF");
+        break;
+      case 'l':
+        // auto-learn unknown object
+        if(unknown_detection && !regions.empty()) {
+          double conf;
+          std::string pred = classifyWithUnknown(regions[0].featureVector,
+                                                train_labels,
+                                                train_features,
+                                                conf,
+                                                unknown_threshold);
+          
+          if(pred == "UNKNOWN") {
+            std::println("Unknown object detected!");
+            std::println("Enter name for this new object: ");
+            std::string new_name;
+            std::getline(std::cin, new_name);
+            
+            if(!new_name.empty()) {
+              saveTrainingExample(db_filename, new_name, regions[0].featureVector);
+              num_train = loadTrainingData(db_filename, train_labels, train_features);
+              std::println("Learned new object: {}", new_name);
+              std::println("Database now has {} examples", num_train);
+            }
+          } else {
+            std::println("Object is known: {} ({:.0f}%)", pred, conf * 100);
+          }
+        } else if(!unknown_detection) {
+          std::println("Press 'u' to enable unknown detection");
+        }
         break;
       case '0':
         display_mode = 0;
