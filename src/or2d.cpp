@@ -39,6 +39,7 @@ void showHelp() {
   std::println("  t - toggle training mode");
   std::println("  n - save training sample (features)");
   std::println("  c - save CNN training sample (embedding)");
+  std::println("  m - print CNN confusion matrix");
   std::println("  e - evaluation mode");
   std::println("  r - record evaluation result");
   std::println("  p - print confusion matrix");
@@ -105,6 +106,7 @@ int main(int argc, char** argv) {
   bool eval_mode = false;
   bool unknown_detection = false;  // unknown detection mode
   double unknown_threshold = 0.5;  // confidence threshold for unknown
+  bool cnn_eval_mode = false;  // CNN evaluation mode
   cv::Mat frame;
   std::vector<RegionInfo> regions;
   cv::Mat segmented, labelMap;
@@ -138,6 +140,8 @@ int main(int argc, char** argv) {
 
   // Confusion matrix
   ConfusionMatrix conf_matrix;
+  // separate matrix for CNN
+  ConfusionMatrix cnn_conf_matrix; 
 
   /* 
     Main video processing loop 
@@ -167,6 +171,10 @@ int main(int argc, char** argv) {
       text += " | EVAL";
       cv::putText(display, "Press 'r' to record result", cv::Point(10, 60),
         cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 0, 255), 2);
+    } else if(cnn_eval_mode) {
+      text += " | CNN EVAL";
+      cv::putText(display, "Press 'c' for CNN result", cv::Point(10, 60),
+        cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 128, 255), 2);
     } else if(unknown_detection) {
       text += " | UNKNOWN DETECT";
       cv::putText(display, "Press 'l' to learn unknown", cv::Point(10, 60),
@@ -312,7 +320,50 @@ int main(int argc, char** argv) {
         if (eval_mode) training_mode = false;
         std::println("Eval mode: {}", eval_mode ? "ON" : "OFF");
         break;
-      case 'r':
+      case 'f':
+        cnn_eval_mode = !cnn_eval_mode;
+        if(cnn_eval_mode) {
+          training_mode = false;
+          eval_mode = false;
+        }
+        std::println("CNN eval: {}", cnn_eval_mode ? "ON" : "OFF");
+        break;
+      case 'c':  // Save CNN embedding training sample
+        if (cnn_eval_mode) {
+          if (regions.empty()) {
+            std::println("No object!");
+          }
+          else if (cnn_net.empty()) {
+            std::println("CNN model not loaded!");
+          }
+          else {
+            RegionInfo& obj = regions[0];
+            if (obj.embeddingVector.empty()) {
+              std::println("No embedding computed for this object.");
+            }
+            else {
+              float conf;
+              std::println("Enter object name for CNN training: ");
+              std::string obj_name;
+              std::getline(std::cin, obj_name);
+           
+              std::string pred = classifyObjectCNN(regions[0].embeddingVector,
+                cnn_train_labels, cnn_train_features, conf);
+
+              if (!obj_name.empty()) {
+                saveTrainingExample(cnn_db_filename, obj_name, obj.embeddingVector);
+                loadTrainingData(cnn_db_filename, cnn_train_labels, cnn_train_features);
+                addResultToMatrix(cnn_conf_matrix, obj_name, pred);
+                std::println("CNN embedding recorded. {} CNN examples total.", cnn_train_labels.size());
+              }
+            }
+          }
+        }
+        else {
+          std::println("Not in CNN eval mode. Press 'f' to toggle CNN eval mode.");
+        }
+        break;
+        case 'r':
         if (eval_mode) {
           if (regions.empty()) {
             std::println("No object!");
@@ -332,41 +383,15 @@ int main(int argc, char** argv) {
               std::println("Recorded");
             }
           }
-        }
-        break;
-      case 'c':  // Save CNN embedding training sample
-        if (training_mode) {
-          if (regions.empty()) {
-            std::println("No object!");
-          }
-          else if (cnn_net.empty()) {
-            std::println("CNN model not loaded!");
-          }
-          else {
-            RegionInfo& obj = regions[0];
-            if (obj.embeddingVector.empty()) {
-              std::println("No embedding computed for this object.");
-            }
-            else {
-              std::println("Enter object name for CNN training: ");
-              std::string obj_name;
-              std::getline(std::cin, obj_name);
-
-              if (!obj_name.empty()) {
-                saveTrainingExample(cnn_db_filename, obj_name, obj.embeddingVector);
-                loadTrainingData(cnn_db_filename, cnn_train_labels, cnn_train_features);
-                std::println("CNN embedding recorded. {} CNN examples total.", cnn_train_labels.size());
-              }
-            }
-          }
-        }
-        else {
-          std::println("Not in training mode. Press 't' to toggle training mode.");
-        }
+        } 
         break;
       case 'p':
         printConfusionMatrix(conf_matrix);
         saveConfusionMatrix(conf_matrix, "confusion_matrix.csv");
+        break;
+      case 'm':
+        printConfusionMatrix(cnn_conf_matrix);
+        saveConfusionMatrix(cnn_conf_matrix, "confusion_matrix_cnn.csv");
         break;
       case 'u':
         unknown_detection = !unknown_detection;
@@ -482,6 +507,11 @@ int main(int argc, char** argv) {
   std::println("\n=== Final Results ===");
   printConfusionMatrix(conf_matrix);
   saveConfusionMatrix(conf_matrix, "confusion_matrix.csv");
+
+  //print cnn confusion matrix
+  std::println("\n=== Final Results (CNN Embeddings) ===");
+  printConfusionMatrix(cnn_conf_matrix);
+  saveConfusionMatrix(cnn_conf_matrix, "confusion_matrix_cnn.csv");
 
   // cleanup and exit
   cap.release();
